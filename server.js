@@ -1,117 +1,55 @@
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios");
+const dotenv = require("dotenv");
+const Groq = require("groq-sdk");
+
+dotenv.config();
 
 const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
+
 app.get("/", (req, res) => {
-
-res.send(
-
-"Robust AI Backend Running"
-
-);
-
+  res.send("Robust AI Backend Running");
 });
 
-app.post(
+app.post("/api/chat", async (req, res) => {
+  try {
 
-"/api/chat",
+    const { message } = req.body;
 
-async (req, res) => {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      model: "llama-3.3-70b-versatile"
+    });
 
-try {
+    res.json({
+      reply: completion.choices[0].message.content
+    });
 
-const {
+  } catch (error) {
 
-message
+    console.log(error);
 
-} = req.body;
+    res.status(500).json({
+      error: error.message
+    });
 
-if (!message) {
-
-return res.status(400).json({
-
-reply:
-
-"No message received"
-
+  }
 });
 
-}
+const PORT = process.env.PORT || 5000;
 
-const response = await axios.post(
-
-"http://localhost:11434/api/generate",
-
-{
-
-model: "llama3",
-
-prompt: message,
-
-stream: false,
-
-options: {
-
-temperature: 0.7,
-
-num_predict: 150
-
-}
-
-},
-
-{
-
-timeout: 60000
-
-}
-
-);
-
-const reply =
-
-response.data.response
-
-||
-
-"Empty response";
-
-res.json({
-
-reply
-
-});
-
-}
-
-catch (err) {
-
-console.log(
-
-err.message
-
-);
-
-res.status(500).json({
-
-reply:
-
-"Ollama connection failed"
-
-});
-
-}
-
-}
-
-);
-
-app.listen(5000, "0.0.0.0", () => {
-  console.log("Server running on port 5000");
+app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
 });
